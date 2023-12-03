@@ -14,8 +14,6 @@ public class GameplayActivity extends AppCompatActivity {
 
     private static final int NUM_INITIAL_GRASS_ROWS = 10;
     private static final int ROW_HEIGHT_DP = 85;
-
-    private boolean test = false;
     private boolean userClickedUpArrow = false;
     private LinearLayout llGameContainer;
     private ImageView ivCharacter;
