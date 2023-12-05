@@ -7,6 +7,10 @@
     android:layout_height="match_parent"
     android:background="#A9A9A9">
 
+
+
+
+
     <LinearLayout
         android:id="@+id/llGameContainer"
         android:layout_width="422dp"
@@ -20,7 +24,31 @@
         app:layout_constraintHorizontal_bias="0.511"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="1.0" />
+        app:layout_constraintVertical_bias="1.0" >
+    </LinearLayout>
+
+
+    <ImageView
+        android:id="@+id/tree"
+        android:layout_width="63dp"
+        android:layout_height="55dp"
+        android:layout_marginTop="16dp"
+        android:src="@drawable/tree"
+        android:visibility="invisible"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <ImageView
+        android:id="@+id/carImageView"
+        android:layout_width="100dp"
+        android:layout_height="120dp"
+        android:layout_centerHorizontal="true"
+        android:src="@drawable/car"
+        android:visibility="invisible"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 
     <ImageView
         android:id="@+id/ivCharacter"
@@ -33,6 +61,19 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/llGameContainer"
         app:layout_constraintVertical_bias="0.951" />
+
+    <TextView
+        android:id="@+id/scoreTextView"
+        android:layout_width="165dp"
+        android:layout_height="63dp"
+        android:text="Score: 0"
+        android:textColor="#000000"
+        android:textSize="30sp"
+        android:textStyle="bold"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="16dp" />
 
     <Button
         android:id="@+id/upArrowButton"

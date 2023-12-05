@@ -2,27 +2,40 @@ package com.example.crossyroadsgame;
 
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Rect;
 import android.os.Bundle;
 import android.os.Handler;
+import android.util.Log;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.RelativeLayout;
+import android.widget.TextView;
+
 import androidx.appcompat.app.AppCompatActivity;
+
+import java.util.ArrayList;
 import java.util.Random;
 
 public class GameplayActivity extends AppCompatActivity {
 
     private static final int NUM_INITIAL_GRASS_ROWS = 10;
     private static final int ROW_HEIGHT_DP = 85;
-
-    private boolean test = false;
     private boolean userClickedUpArrow = false;
     private LinearLayout llGameContainer;
     private ImageView ivCharacter;
-
-    private static final int CHARACTER_MOVE_DISTANCE = 100; // Adjust this value as needed
-
+    private static final int CHARACTER_MOVE_DISTANCE = 125;
     private int characterPositionX = 0;
+
+    private int score = 0;
+    private TextView scoreTextView;
+    private ArrayList<Car> carList = new ArrayList<>();
+
+
+    private static final int MAX_TREES_PER_ROW = 3; // Adjust based on screen size
+    private static final int TREE_SPACING_DP = 200; // Adjust for spacing between trees
+    private ArrayList<ImageView> treeImageViews = new ArrayList<>();
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -32,14 +45,16 @@ public class GameplayActivity extends AppCompatActivity {
         llGameContainer = findViewById(R.id.llGameContainer);
         ivCharacter = findViewById(R.id.ivCharacter);
 
+        scoreTextView = findViewById(R.id.scoreTextView);
+
         findViewById(R.id.upArrowButton).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 // Handle the upward arrow click
                 userClickedUpArrow = true;
+                updateScore(score + 1);
             }
         });
-
         findViewById(R.id.leftArrowButton).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -55,14 +70,17 @@ public class GameplayActivity extends AppCompatActivity {
                 moveCharacterRight();
             }
         });
-
         // Add initial grass rows
         for (int i = 0; i < NUM_INITIAL_GRASS_ROWS; i++) {
             addGrassRow();
         }
-
         // Start the game loop
         startGameLoop();
+    }
+
+    private void updateScore(int newScore) {
+        score = newScore;
+        scoreTextView.setText("Score: " + score);
     }
 
     public static Intent newIntent(Context context) {
@@ -87,13 +105,43 @@ public class GameplayActivity extends AppCompatActivity {
             @Override
             public void run() {
                 // Game loop logic goes here
+
+                // Check for collisions on the main thread
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        checkCollisions();
+                    }
+                });
+
+                // Move the car on the main thread
+                for (int i = carList.size() - 1; i >= 0; i--) {
+                    final Car car = carList.get(i);
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            car.move(llGameContainer.getWidth());
+                        }
+                    });
+                }
+
                 // Check if the up arrow is clicked
                 if (userClickedUpArrow) {
                     // Remove the bottom row
-                    removeBottomRow();
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            removeBottomRow();
+                        }
+                    });
 
                     // Add a new row at the top
-                    addRandomRowAtTop();
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            addRandomRowAtTop();
+                        }
+                    });
 
                     // Reset the user input flag
                     userClickedUpArrow = false;
@@ -105,73 +153,148 @@ public class GameplayActivity extends AppCompatActivity {
         });
     }
 
+    public void checkCollisions() {
+        Log.d("Collision", "Checking collisions...");
+
+        boolean collisions = false;
+
+        // Get the character's position and dimensions
+        float characterX = ivCharacter.getX();
+        float characterY = ivCharacter.getY();
+        int characterWidth = ivCharacter.getWidth();
+        int characterHeight = ivCharacter.getHeight();
+
+        Log.d("Character", "X: " + characterX + ", Y: " + characterY +
+                ", Width: " + characterWidth + ", Height: " + characterHeight);
+
+        // Check for collisions with cars
+        for (Car car : carList) {
+            if (car.collidesWithPlayer(characterX, characterY, characterWidth, characterHeight)) {
+                Log.d("Collision", "Collision with car!");
+                handleCollision();
+            }
+        }
+    }
+
+    private void handleCollision() {
+        Log.d("Collision", "Collision detected! Game Over!");
+        finish();
+        // You can also start a new activity for the end game screen using an Intent.
+        // Example: startActivity(new Intent(this, EndGameActivity.class));
+        // For now, let's finish the current activity (GameplayActivity).
+    }
+
     private void moveCharacterLeft() {
-        // Calculate the new position
         characterPositionX -= CHARACTER_MOVE_DISTANCE;
         updateCharacterPosition();
     }
 
     private void moveCharacterRight() {
-        // Calculate the new position
         characterPositionX += CHARACTER_MOVE_DISTANCE;
         updateCharacterPosition();
     }
 
-    private int getMaxScreenX() {
-        // Calculate and return the maximum X coordinate of the screen
-        // You can adjust this based on your screen size and character size
-        return Math.max(0, llGameContainer.getWidth() - ivCharacter.getWidth());
-    }
-
     private void updateCharacterPosition() {
-        // Update the UI to reflect the new character position
-        // For example, you can set the translationX property of ivCharacter
-        // You may need to use ObjectAnimator or setTranslationX() based on your UI structure
         characterPositionX = Math.max(-500, Math.min(characterPositionX, 500));
         ivCharacter.setTranslationX(characterPositionX);
     }
-
     private void removeBottomRow() {
-        // Remove the bottom row from llGameContainer
         if (llGameContainer.getChildCount() > 0) {
             llGameContainer.removeViewAt(llGameContainer.getChildCount() - 1);
         }
     }
-
     private void addRandomRowAtTop() {
-        // Add a random row at the top of llGameContainer (either grass or concrete)
         if (new Random().nextBoolean()) {
-            addGrassRowAtTop();
+            addGrassRowWithTrees();
         } else {
             addConcreteRowAtTop();
         }
     }
-
-    private void addGrassRowAtTop() {
-        // Add a grass row at the top of llGameContainer
-        ImageView grassRow = new ImageView(this);
-        grassRow.setLayoutParams(new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
+    private void addGrassRowWithTrees() {
+        RelativeLayout grassWithTreesRow = new RelativeLayout(this);
+        grassWithTreesRow.setLayoutParams(new RelativeLayout.LayoutParams(
+                RelativeLayout.LayoutParams.MATCH_PARENT,
                 (int) dpToPx(ROW_HEIGHT_DP)));
-        grassRow.setImageResource(R.drawable.grass);
-        grassRow.setScaleType(ImageView.ScaleType.FIT_XY);
 
-        llGameContainer.addView(grassRow, 0); // Add at the beginning
+        grassWithTreesRow.setBackgroundResource(R.drawable.grass);
+
+        llGameContainer.addView(grassWithTreesRow, 0);
+
+        Random random = new Random();
+        for (int i = 0; i < MAX_TREES_PER_ROW; i++) {
+            if (random.nextBoolean()) {
+                ImageView tree = new ImageView(this);
+                RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(
+                        (int) dpToPx(TREE_SPACING_DP),
+                        RelativeLayout.LayoutParams.MATCH_PARENT);
+
+                params.addRule(RelativeLayout.ALIGN_PARENT_LEFT);
+                params.leftMargin = i * TREE_SPACING_DP;
+
+                tree.setLayoutParams(params);
+                tree.setImageResource(R.drawable.tree);
+                grassWithTreesRow.addView(tree);
+                treeImageViews.add(tree);
+            }
+        }
     }
+
 
     private void addConcreteRowAtTop() {
-        // Add a concrete row at the top of llGameContainer
-        ImageView concreteRow = new ImageView(this);
-        concreteRow.setLayoutParams(new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
+        RelativeLayout concreteRow = new RelativeLayout(this);
+        concreteRow.setLayoutParams(new RelativeLayout.LayoutParams(
+                RelativeLayout.LayoutParams.MATCH_PARENT,
                 (int) dpToPx(ROW_HEIGHT_DP)));
-        concreteRow.setImageResource(R.drawable.concrete);
-        concreteRow.setScaleType(ImageView.ScaleType.FIT_XY);
-        llGameContainer.addView(concreteRow, 0); // Add at the beginning
+
+        ImageView concreteImageView = new ImageView(this);
+        concreteImageView.setLayoutParams(new RelativeLayout.LayoutParams(
+                RelativeLayout.LayoutParams.MATCH_PARENT,
+                RelativeLayout.LayoutParams.MATCH_PARENT));
+        concreteImageView.setImageResource(R.drawable.concrete);
+        concreteImageView.setScaleType(ImageView.ScaleType.FIT_XY);
+        concreteRow.addView(concreteImageView);
+
+        // Add the car to the concrete row
+        addCarToConcreteRow(concreteRow);
+
+        // Add the concrete row to llGameContainer
+        llGameContainer.addView(concreteRow, 0);
     }
 
+    private void addCarToConcreteRow(RelativeLayout concreteRow) {
+        int carWidth = 300; // Set the desired width
+        int carHeight = 300; // Set the desired height
+
+        int yOffset = 0;
+        Car car = new Car(this, getRandomSpeed(), carWidth, carHeight, new Handler());
+
+        // Set the initial position and direction of the car
+        if (new Random().nextBoolean()) {
+            // Move from left to right
+            car.setInitialPosition(0, yOffset);
+            car.setMoveDirection(Car.MOVE_RIGHT);
+        } else {
+            // Move from right to left
+            car.setInitialPosition(llGameContainer.getWidth() - carWidth, yOffset);
+            car.setMoveDirection(Car.MOVE_LEFT);
+        }
+
+        concreteRow.addView(car);
+        carList.add(car);
+    }
+
+    private int getRandomSpeed() {
+        // Set the range for random speeds (adjust as needed)
+        int minSpeed = 5;
+        int maxSpeed = 40;
+
+        // Generate a random speed within the specified range
+        return new Random().nextInt((maxSpeed - minSpeed) + 1) + minSpeed;
+    }
+
+
+
     private float dpToPx(float dp) {
-        // Helper method to convert density-independent pixels (dp) to pixels (px)
         float density = getResources().getDisplayMetrics().density;
         return dp * density;
     }
