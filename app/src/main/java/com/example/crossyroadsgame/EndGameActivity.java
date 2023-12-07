@@ -5,6 +5,10 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
+import android.widget.TextView;
+import android.content.SharedPreferences;
+
+
 import androidx.appcompat.app.AppCompatActivity;
 
 public class EndGameActivity extends AppCompatActivity {
@@ -14,39 +18,86 @@ public class EndGameActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.screen_end);
 
-        // Find the replay button by its ID
-        Button replayButton = findViewById(R.id.replayButton);
+        int score = getIntent().getIntExtra("SCORE", 0);
 
-        // Set a click listener for the replay button
+        TextView gameOverText = findViewById(R.id.gameOverText);
+        TextView userScoreTextView = findViewById(R.id.userScoreTextView);
+        TextView highScoreTextView = findViewById(R.id.highScoreTextView);
+
+        // Set the score in the UI
+        userScoreTextView.setText("Your Score: " + score);
+
+        // Retrieve the high score from SharedPreferences
+
+        int highScore = getHighScore();
+        highScoreTextView.setText("High Score: " + highScore);
+
+
+
+        // Check if the current score is higher than the stored high score
+        if (score > highScore) {
+            // Update the high score in SharedPreferences
+            updateHighScore(score);
+            highScoreTextView.setText("New High Score: " + score);
+        }
+
+
+
+        Button replayButton = findViewById(R.id.replayButton);
+        Button closeButton = findViewById(R.id.closeButton);
+
+
         replayButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                // Call the function to handle replay
                 replayGame();
             }
         });
 
-        // You can add more initialization code here if needed
+        closeButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                closeGameOverScreen();
+            }
+        });
     }
 
-    public static Intent newIntent(Context context) {
-        return new Intent(context, GameplayActivity.class);
+    // Add these methods for updating and retrieving the high score
+
+    private void updateHighScore(int newHighScore) {
+        SharedPreferences preferences = getPreferences(MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putInt("HIGH_SCORE", newHighScore);
+        editor.apply();
     }
 
-    // Function to handle replay button click
+    private int getHighScore() {
+        SharedPreferences preferences = getPreferences(MODE_PRIVATE);
+        return preferences.getInt("HIGH_SCORE", 0);
+    }
+    public static Intent newIntent(Context context, int score) {
+        Intent intent = new Intent(context, EndGameActivity.class);
+        intent.putExtra("SCORE", score);
+        return intent;
+    }
+
+
     public void replayGame() {
-        // Assuming you want to restart the gameplay activity
-        // You may also want to pass data like the player's score to the new gameplay instance
-        // Here, we start the GameplayActivity without passing any extra data
-        startActivity(GameplayActivity.newIntent(this));
+        // Set the score to 0 before starting a new gameplay session
+        int score = 0;
 
-        // Finish the current activity to remove it from the back stack
-        finish();
+        // Start the existing GameplayActivity and pass the score
+        startActivity(GameplayActivity.newIntent(this, score));
+
+        // Note: Do not finish the current activity to keep the end game screen open
     }
 
-    // Function to handle close button click
-    public void closeGameOverScreen(View view) {
-        // Finish the current activity to go back
+
+    public void closeGameOverScreen() {
+        // Finish the current activity
         finish();
+
+        // Start the StartGameActivity or the activity responsible for starting a new game
+        startActivity(new Intent(this, StartActivity.class));
     }
 }

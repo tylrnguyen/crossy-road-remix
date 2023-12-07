@@ -26,6 +26,8 @@
         <activity android:name=".GameplayActivity" />
 
         <!-- Add any other activities here -->
+        <activity android:name=".EndGameActivity" />
+
 
     </application>
 

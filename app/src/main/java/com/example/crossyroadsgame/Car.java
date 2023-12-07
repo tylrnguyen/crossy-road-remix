@@ -1,6 +1,7 @@
 package com.example.crossyroadsgame;
 
 import android.content.Context;
+import android.graphics.Rect;
 import android.graphics.RectF;
 import android.util.Log;
 import android.view.ViewGroup;
@@ -27,24 +28,6 @@ public class Car extends AppCompatImageView {
         setLayoutParams(params);
     }
 
-    public boolean collidesWithPlayer(float playerX, float playerY, int playerWidth, int playerHeight) {
-        RectF carRect = new RectF(
-                getX(),
-                getY(),
-                getX() + getWidth(),
-                getY() + getHeight());
-
-        RectF playerRect = new RectF(
-                playerX,
-                playerY,
-                playerX + playerWidth,
-                playerY + playerHeight);
-
-        boolean collision = RectF.intersects(carRect, playerRect);
-        Log.d("Collision", "Collision: " + collision);
-
-        return collision;
-    }
     public void setInitialPosition(float x, float y) {
         setTranslationX(x);
         setTranslationY(y);

@@ -2,7 +2,9 @@ package com.example.crossyroadsgame;
 
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Path;
 import android.graphics.Rect;
+import android.graphics.RectF;
 import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
@@ -11,6 +13,7 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
+import android.content.Intent;
 
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -19,21 +22,20 @@ import java.util.Random;
 
 public class GameplayActivity extends AppCompatActivity {
 
-    private static final int NUM_INITIAL_GRASS_ROWS = 10;
+    private int NUM_INITIAL_GRASS_ROWS = 10;
     private static final int ROW_HEIGHT_DP = 85;
     private boolean userClickedUpArrow = false;
     private LinearLayout llGameContainer;
-    private ImageView ivCharacter;
-    private static final int CHARACTER_MOVE_DISTANCE = 125;
+    private static final int CHARACTER_MOVE_DISTANCE = 85;
     private int characterPositionX = 0;
-
+    private ImageView ivCharacter;
     private int score = 0;
     private TextView scoreTextView;
     private ArrayList<Car> carList = new ArrayList<>();
-
-
-    private static final int MAX_TREES_PER_ROW = 3; // Adjust based on screen size
-    private static final int TREE_SPACING_DP = 200; // Adjust for spacing between trees
+    private ArrayList<Tree> treeList = new ArrayList<>();
+    private static final String SCORE_KEY = "SCORE";
+    private static final int MAX_TREES_PER_ROW = 2; // Adjust based on screen size
+    private static final int TREE_SPACING_DP = 175; // Adjust for spacing between trees
     private ArrayList<ImageView> treeImageViews = new ArrayList<>();
 
 
@@ -43,9 +45,16 @@ public class GameplayActivity extends AppCompatActivity {
         setContentView(R.layout.activity_game);
 
         llGameContainer = findViewById(R.id.llGameContainer);
+        scoreTextView = findViewById(R.id.scoreTextView);
         ivCharacter = findViewById(R.id.ivCharacter);
 
-        scoreTextView = findViewById(R.id.scoreTextView);
+        score = getIntent().getIntExtra(SCORE_KEY, 0);
+        updateScore(score);
+
+        // Add initial grass rows
+        for (int i = 0; i < NUM_INITIAL_GRASS_ROWS; i++) {
+            addGrassRow();
+        }
 
         findViewById(R.id.upArrowButton).setOnClickListener(new View.OnClickListener() {
             @Override
@@ -70,10 +79,7 @@ public class GameplayActivity extends AppCompatActivity {
                 moveCharacterRight();
             }
         });
-        // Add initial grass rows
-        for (int i = 0; i < NUM_INITIAL_GRASS_ROWS; i++) {
-            addGrassRow();
-        }
+
         // Start the game loop
         startGameLoop();
     }
@@ -83,8 +89,10 @@ public class GameplayActivity extends AppCompatActivity {
         scoreTextView.setText("Score: " + score);
     }
 
-    public static Intent newIntent(Context context) {
-        return new Intent(context, GameplayActivity.class);
+    public static Intent newIntent(Context context, int score) {
+        Intent intent = new Intent(context, GameplayActivity.class);
+        intent.putExtra(SCORE_KEY, score);
+        return intent;
     }
 
     private void addGrassRow() {
@@ -94,8 +102,11 @@ public class GameplayActivity extends AppCompatActivity {
                 (int) dpToPx(ROW_HEIGHT_DP)));
         grassRow.setImageResource(R.drawable.grass);
         grassRow.setScaleType(ImageView.ScaleType.FIT_XY);
+
+        // Add the grass row to llGameContainer
         llGameContainer.addView(grassRow);
     }
+
 
     private void startGameLoop() {
         final Handler handler = new Handler();
@@ -104,15 +115,9 @@ public class GameplayActivity extends AppCompatActivity {
         handler.post(new Runnable() {
             @Override
             public void run() {
-                // Game loop logic goes here
 
                 // Check for collisions on the main thread
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        checkCollisions();
-                    }
-                });
+                checkCollisions();
 
                 // Move the car on the main thread
                 for (int i = carList.size() - 1; i >= 0; i--) {
@@ -153,36 +158,6 @@ public class GameplayActivity extends AppCompatActivity {
         });
     }
 
-    public void checkCollisions() {
-        Log.d("Collision", "Checking collisions...");
-
-        boolean collisions = false;
-
-        // Get the character's position and dimensions
-        float characterX = ivCharacter.getX();
-        float characterY = ivCharacter.getY();
-        int characterWidth = ivCharacter.getWidth();
-        int characterHeight = ivCharacter.getHeight();
-
-        Log.d("Character", "X: " + characterX + ", Y: " + characterY +
-                ", Width: " + characterWidth + ", Height: " + characterHeight);
-
-        // Check for collisions with cars
-        for (Car car : carList) {
-            if (car.collidesWithPlayer(characterX, characterY, characterWidth, characterHeight)) {
-                Log.d("Collision", "Collision with car!");
-                handleCollision();
-            }
-        }
-    }
-
-    private void handleCollision() {
-        Log.d("Collision", "Collision detected! Game Over!");
-        finish();
-        // You can also start a new activity for the end game screen using an Intent.
-        // Example: startActivity(new Intent(this, EndGameActivity.class));
-        // For now, let's finish the current activity (GameplayActivity).
-    }
 
     private void moveCharacterLeft() {
         characterPositionX -= CHARACTER_MOVE_DISTANCE;
@@ -223,21 +198,23 @@ public class GameplayActivity extends AppCompatActivity {
         Random random = new Random();
         for (int i = 0; i < MAX_TREES_PER_ROW; i++) {
             if (random.nextBoolean()) {
-                ImageView tree = new ImageView(this);
+                Tree tree = new Tree(this);
                 RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(
-                        (int) dpToPx(TREE_SPACING_DP),
-                        RelativeLayout.LayoutParams.MATCH_PARENT);
+                        Tree.getTreeWidth(),
+                        Tree.getTreeHeight());
 
                 params.addRule(RelativeLayout.ALIGN_PARENT_LEFT);
-                params.leftMargin = i * TREE_SPACING_DP;
+
+                // Adjust the range of spacing between 200 and 400
+                params.leftMargin = i * (200 + random.nextInt(450));
 
                 tree.setLayoutParams(params);
-                tree.setImageResource(R.drawable.tree);
                 grassWithTreesRow.addView(tree);
-                treeImageViews.add(tree);
+                treeList.add(tree);
             }
         }
     }
+
 
 
     private void addConcreteRowAtTop() {
@@ -292,7 +269,52 @@ public class GameplayActivity extends AppCompatActivity {
         return new Random().nextInt((maxSpeed - minSpeed) + 1) + minSpeed;
     }
 
+    private boolean hasCollided = false;
 
+    private void checkCollisions() {
+        if (!hasCollided) {
+            for (Car car : carList) {
+                if (isCollisionDetected(ivCharacter, car)) {
+                    // Collision with a car, end the game
+                    hasCollided = true; // Set the flag to true to avoid repeated calls
+                    endGame();
+                    return;
+                }
+            }
+        }
+    }
+
+
+    private boolean isCollisionDetected(View view1, View view2) {
+        int[] location1 = new int[2];
+        view1.getLocationOnScreen(location1);
+        RectF rect1 = new RectF(
+                location1[0] + view1.getPaddingStart(),
+                location1[1] + view1.getPaddingTop(),
+                location1[0] + view1.getWidth() - view1.getPaddingEnd(),
+                location1[1] + view1.getHeight() - view1.getPaddingBottom());
+        int[] location2 = new int[2];
+        view2.getLocationOnScreen(location2);
+        RectF rect2 = new RectF(
+                location2[0] + view2.getPaddingStart(),
+                location2[1] + view2.getPaddingTop(),
+                location2[0] + view2.getWidth() - view2.getPaddingEnd(),
+                location2[1] + view2.getHeight() - view2.getPaddingBottom());
+        // Check if the rectangles overlap
+        boolean collisionDetected = rect1.intersect(rect2);
+        // Reset the collision flag only if the views are not colliding anymore
+        if (!collisionDetected) {
+            hasCollided = false;
+        }
+        return collisionDetected;
+    }
+
+
+
+
+    private void endGame() {
+        startActivity(EndGameActivity.newIntent(this, score));
+    }
 
     private float dpToPx(float dp) {
         float density = getResources().getDisplayMetrics().density;
